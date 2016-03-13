@@ -83,10 +83,11 @@
 
 (defmacro trace-forms
   "Recursively trace one or more forms."
-  {:arglists '([& forms] [{:keys [tracer]} & forms])}
+  {:arglists '([& forms] [{:keys [tracer onoffvar]} & forms])}
   [& forms]
     (let [opts (when (and (map? (first forms))
-                          (contains? (first forms) :tracer))
+                          (or (contains? (first forms) :tracer)
+                              (contains? (first forms) :onoffvar)))
                  (first forms))
           forms (if opts
                   (next forms)
@@ -95,11 +96,14 @@
                    tracer
                    (if-let [tracer (:clairvoyant/tracer (meta *ns*))]
                      tracer
-                     'clairvoyant.core/default-tracer))]
+                     'clairvoyant.core/default-tracer))
+          onoffvar (if-let [onoffvar (:onoffvar opts)]
+                     onoffvar
+                     dev?)]
       (binding [*tracer* tracer]
         (let [traced-forms (doall (for [form forms]
                                     (trace-form form &env)))]
-          `(if ~dev?
+          `(if ~onoffvar
              (do ~@traced-forms)
              (do ~@forms))))))
 
